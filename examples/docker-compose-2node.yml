@@ -1,0 +1,69 @@
+version: "3.8"
+
+networks:
+  ddp-net:
+    driver: overlay
+    attachable: true
+
+services:
+  node0:
+    image: my-ddp-trainer:latest
+    command: >
+      torchrun --nproc_per_node=1 --nnodes=2 --node_rank=0
+      --master_addr=node0 --master_port=12355
+      training_code.py 10 2 --batch_size 32 --snapshot_path snapshot.pt
+    environment:
+      # Basic NCCL configuration
+      - NCCL_SOCKET_IFNAME=eth0
+      - NCCL_IB_DISABLE=1
+      - NCCL_DEBUG=INFO
+      - TORCH_DISTRIBUTED_DEBUG=DETAIL
+    networks:
+      ddp-net:
+        aliases:
+          - node0  # Important: provides consistent hostname for master
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager  # Run on manager node
+      restart_policy:
+        condition: none
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  node1:
+    image: my-ddp-trainer:latest
+    command: >
+      torchrun --nproc_per_node=1 --nnodes=2 --node_rank=1
+      --master_addr=node0 --master_port=12355
+      training_code.py 10 2 --batch_size 32 --snapshot_path snapshot.pt
+    environment:
+      # Same NCCL configuration as node0
+      - NCCL_SOCKET_IFNAME=eth0
+      - NCCL_IB_DISABLE=1
+      - NCCL_DEBUG=INFO
+      - TORCH_DISTRIBUTED_DEBUG=DETAIL
+    networks:
+      - ddp-net
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker  # Run on worker node
+      restart_policy:
+        condition: none
+    depends_on:
+      - node0  # Ensure master starts first
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu] 

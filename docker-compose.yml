@@ -1,0 +1,88 @@
+version: "3.8"
+
+networks:
+  ddp-net:
+    driver: overlay
+    attachable: true
+
+services:
+  node0:
+    image: tayyib1094/my-ddp-trainer:latest
+    command: >
+      torchrun --nproc_per_node=1 --nnodes=3 --node_rank=0
+      --master_addr=node0 --master_port=12355
+      training_code.py 20 5 --batch_size 64 --snapshot_path snapshot.pt
+    environment:
+      - NCCL_SOCKET_IFNAME=eth0
+      - NCCL_IB_DISABLE=1
+      - NCCL_DEBUG=INFO
+      - TORCH_DISTRIBUTED_DEBUG=DETAIL
+      - NCCL_BUFFSIZE=8388608        # 8MB for better throughput
+      - NCCL_NTHREADS=64             # Minimum required (was 32)
+      - NCCL_NET_GDR_LEVEL=0         # GPU Direct not working, disable it
+      - NCCL_SOCKET_NTHREADS=8       # More socket threads
+      - NCCL_NSOCKS_PERTHREAD=2      # Multiple sockets per thread
+    networks:
+      ddp-net:
+        aliases:
+          - node0
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == ahsan-pc
+      restart_policy:
+        condition: none
+
+  node1:
+    image: tayyib1094/my-ddp-trainer:latest
+    command: >
+      torchrun --nproc_per_node=1 --nnodes=3 --node_rank=1
+      --master_addr=node0 --master_port=12355
+      training_code.py 20 5 --batch_size 64 --snapshot_path snapshot.pt
+    environment:
+      - NCCL_SOCKET_IFNAME=eth0
+      - NCCL_IB_DISABLE=1
+      - NCCL_DEBUG=INFO
+      - TORCH_DISTRIBUTED_DEBUG=DETAIL
+      - NCCL_BUFFSIZE=8388608
+      - NCCL_NTHREADS=64             # Minimum required
+      - NCCL_NET_GDR_LEVEL=0         # GPU Direct not working, disable it
+      - NCCL_SOCKET_NTHREADS=8
+      - NCCL_NSOCKS_PERTHREAD=2
+    networks:
+      - ddp-net
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == stallion-01
+      restart_policy:
+        condition: none
+    depends_on:
+      - node0
+
+  node2:
+    image: tayyib1094/my-ddp-trainer:latest
+    command: >
+      torchrun --nproc_per_node=1 --nnodes=3 --node_rank=2
+      --master_addr=node0 --master_port=12355
+      training_code.py 20 5 --batch_size 64 --snapshot_path snapshot.pt
+    environment:
+      - NCCL_SOCKET_IFNAME=eth0
+      - NCCL_IB_DISABLE=1
+      - NCCL_DEBUG=INFO
+      - TORCH_DISTRIBUTED_DEBUG=DETAIL
+      - NCCL_BUFFSIZE=8388608
+      - NCCL_NTHREADS=64             # Minimum required
+      - NCCL_NET_GDR_LEVEL=0         # GPU Direct not working, disable it
+      - NCCL_SOCKET_NTHREADS=8
+      - NCCL_NSOCKS_PERTHREAD=2
+    networks:
+      - ddp-net
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == sama-stallion-02
+      restart_policy:
+        condition: none
+    depends_on:
+      - node0

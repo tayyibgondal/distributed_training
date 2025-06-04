@@ -44,9 +44,9 @@ class Trainer:
         self.optimizer = optimizer
         self.save_every = save_every
         self.epochs_run = 0
-        self.snashot_path = snapshot_path
+        self.snapshot_path = snapshot_path
 
-        if os.path.exists(self.snashot_path):
+        if os.path.exists(self.snapshot_path):
             print('Loading snapshot')
             self._load_snapshot()
 
@@ -62,10 +62,10 @@ class Trainer:
     def _save_snapshot(self, epoch):
         snapshot = {
             "MODEL_STATE": self.model.module.state_dict(),
-            "EPOCHS_RUN": self.epochs_run
+            "EPOCHS_RUN": epoch
         }
-        torch.save(snapshot, self.snashot_path)
-        print(f"Epoch {epoch} | train snapshot saved at {self.snashot_path}")
+        torch.save(snapshot, self.snapshot_path)
+        print(f"Epoch {epoch} | train snapshot saved at {self.snapshot_path}")
 
     def train(self, max_epochs: int):
         for epoch in range(self.epochs_run, max_epochs):
@@ -85,7 +85,9 @@ class Trainer:
     def _run_batch(self, source, targets):
         self.optimizer.zero_grad()
         output = self.model(source)
-        loss = F.cross_entropy(output, targets)
+        # Ensure targets have the correct shape for MSE loss
+        targets = targets.squeeze()
+        loss = F.mse_loss(output.squeeze(), targets)
         loss.backward()
         self.optimizer.step()
 
@@ -108,6 +110,7 @@ if __name__ == "__main__":
     parser.add_argument('total_epochs', type=int, help='Total epochs to train the model')
     parser.add_argument('save_every', type=int, help='How often to save a snapshot')
     parser.add_argument('--batch_size', default=32, type=int, help='Input batch size on each device (default: 32)')
+    parser.add_argument('--snapshot_path', default='snapshot.pt', type=str, help='Path to save the snapshot')
     args = parser.parse_args()
 
-    main(args.save_every, args.total_epochs, args.batch_size)
+    main(args.save_every, args.total_epochs, args.batch_size, args.snapshot_path)
