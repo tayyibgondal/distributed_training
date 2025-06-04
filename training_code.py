@@ -25,11 +25,11 @@ def prepare_dataloader(dataset, batch_size):
         batch_size=batch_size,
         sampler=DistributedSampler(dataset),
         pin_memory=True,
-        shuflle=False
+        shuffle=False
     )
 
 class Trainer:
-    def __inti__(
+    def __init__(
             self,
             model,
             train_data,
@@ -91,7 +91,7 @@ class Trainer:
 
 
 
-def main(save_every: int, total_epochs: int, batch_size: int, snapshot_path: int):
+def main(save_every: int, total_epochs: int, batch_size: int, snapshot_path: str):
     ddp_setup()
 
     dataset, model, optimizer = load_train_objs()
