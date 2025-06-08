@@ -39,7 +39,7 @@ distributed_training/
 - Multiple machines with Docker installed
 - NVIDIA Docker runtime (for GPU support)
 - Network connectivity between all nodes
-- CUDA-compatible GPUs (recommended)
+- CUDA-compatible GPUs 
 
 ## 🏗️ Architecture Overview
 
